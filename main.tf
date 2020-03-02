@@ -2,6 +2,15 @@ terraform {
   required_providers {
     helm = "~> 1.0"
   }
+
+#   backend "remote" {
+#     hostname     = "app.terraform.io"
+#     organization = "tecnoly"
+
+#     workspaces {
+#       name = "terraform-nginx-ingress"
+#     }
+#   }
 }
 
 data "terraform_remote_state" "cluster" {
@@ -18,6 +27,10 @@ data "terraform_remote_state" "cluster" {
 }
 
 data "google_client_config" "current" {}
+
+resource "google_compute_address" "ip_address" {
+  name = "nginx-ip"
+}
 
 provider "kubernetes" {
   load_config_file       = false
@@ -46,6 +59,13 @@ data "helm_repository" "stable" {
   url  = "https://kubernetes-charts.storage.googleapis.com"
 }
 
+data "template_file" "values" {
+  template = file("${path.module}/values.tmpl")
+  vars = {
+    reserved_address = google_compute_address.ip_address.address
+  }
+}
+
 resource "helm_release" "nginx_ingress" {
   name          = "nginx-ingress"
   repository    = data.helm_repository.stable.metadata[0].name
@@ -54,6 +74,6 @@ resource "helm_release" "nginx_ingress" {
   namespace     = kubernetes_namespace.nginx_ingress.id
 
   values = [
-    file("${path.module}/values.yaml"),
+    data.template_file.values.rendered
   ]
 }
