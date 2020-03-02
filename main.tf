@@ -11,7 +11,7 @@ data "terraform_remote_state" "cluster" {
     hostname     = "app.terraform.io"
     organization = "tecnoly"
 
-    workspaces {
+    workspaces = {
       name = "gke-cluster"
     }
   }
